@@ -40,8 +40,7 @@ class ContextBuilder:
                 if not self.gitignore_spec.match_file(str(Path(root) / f)):
                     tree.append(f"{sub_indent}{f}")
                     
-        return "
-".join(tree)
+        return "\n".join(tree)
 
     def get_file_content(self, file_path: str) -> str:
         """Reads the content of a file if it's not ignored."""
@@ -57,35 +56,31 @@ class ContextBuilder:
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 content = f.read()
-                return f"--- FILE: {file_path} ---
-{content}
---- END FILE ---"
+                return f"--- FILE: {file_path} ---\n{content}\n--- END FILE ---"
         except Exception as e:
             return f"Error reading {file_path}: {str(e)}"
 
     def build_system_prompt(self) -> str:
-        """Constructs the initial system prompt with project context."""
+        """Constructs the initial system prompt with project context and tool usage instructions."""
         tree = self.get_directory_tree()
         prompt = (
-            "You are octo-cl, an advanced AI coding assistant powered by local LLMs via Ollama.
-"
+            "You are octo-cl, an advanced AI coding assistant powered by local LLMs via Ollama.\n"
             "You have access to the user's project files and can help with coding tasks, "
-            "refactoring, debugging, and explaining code.
-
-"
-            "Current Directory Structure:
-"
-            f"```
-{tree}
-```
-
-"
-            "Guidelines:
-"
-            "1. Be concise and professional.
-"
-            "2. When suggesting code changes, provide the full file content or clear diffs.
-"
-            "3. If you need to see a specific file's content, ask the user to provide it or use your tools (if enabled)."
+            "refactoring, debugging, and explaining code.\n\n"
+            "Current Directory Structure:\n"
+            f"```\n{tree}\n```\n\n"
+            "--- TOOL USAGE ---\n"
+            "You can execute tools by outputting specific XML-like tags. "
+            "The tool will execute, and the result will be provided to you in the next message.\n\n"
+            "Available Tools:\n"
+            "1. <tool_call:read_file path=\"relative/path/to/file\" /> - Read file content.\n"
+            "2. <tool_call:write_file path=\"relative/path/to/file\">FILE_CONTENT</tool_call:write_file> - Write file content.\n"
+            "3. <tool_call:run_shell command=\"shell command\" /> - Run a shell command in the project root.\n"
+            "4. <tool_call:list_files path=\"relative/path/to/dir\" /> - List files in a directory.\n\n"
+            "Guidelines:\n"
+            "1. Be concise and professional.\n"
+            "2. When suggesting code changes, use the `write_file` tool directly instead of just printing it.\n"
+            "3. Always explain your thought process before calling a tool.\n"
+            "4. Wait for the tool result before proceeding with your next step."
         )
         return prompt
