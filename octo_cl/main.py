@@ -11,6 +11,9 @@ from octo_cl.tools import ToolRegistry
 import os
 import re
 import sys
+import subprocess
+import time
+import shutil
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -55,6 +58,36 @@ def parse_tool_calls(text: str):
         
     return calls
 
+def try_start_ollama():
+    """Attempts to start the Ollama server if it's installed."""
+    ollama_path = shutil.which("ollama")
+    if not ollama_path:
+        console.print(Panel(
+            "[bold yellow]Ollama is not installed or not in PATH.[/bold yellow]\n\n"
+            "To install it:\n"
+            " - [bold cyan]Linux/macOS:[/bold cyan] curl -fsSL https://ollama.com/install.sh | sh\n"
+            " - [bold cyan]Termux:[/bold cyan] Requires proot-distro (e.g., Ubuntu) to run Ollama.\n"
+            " - [bold cyan]Windows:[/bold cyan] Download from ollama.com",
+            title="Ollama Not Found", border_style="yellow"
+        ))
+        return False
+
+    if typer.confirm("Ollama is not running. Would you like to try starting it?"):
+        console.print("[bold blue]Starting Ollama server...[/bold blue]")
+        # Start ollama serve in the background
+        subprocess.Popen([ollama_path, "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Wait for it to spin up
+        with console.status("[bold green]Waiting for Ollama to respond...[/bold green]"):
+            for _ in range(10):
+                time.sleep(1)
+                if OllamaClient(base_url=OLLAMA_URL).check_connection():
+                    console.print("[bold green]Ollama is now running![/bold green]")
+                    return True
+        
+        console.print("[bold red]Ollama started but is not responding. Check logs.[/bold red]")
+    return False
+
 @app.command()
 def chat(
     model: str = typer.Option(DEFAULT_MODEL, "--model", "-m", help="The Ollama model to use."),
@@ -66,13 +99,8 @@ def chat(
     
     # --- Pre-flight Checks ---
     if not client.check_connection():
-        console.print(Panel(
-            f"[bold red]Error:[/bold red] Could not connect to Ollama at [bold cyan]{OLLAMA_URL}[/bold cyan].\n\n"
-            "Please ensure Ollama is running and accessible.\n"
-            "If it's on a different machine, set [bold yellow]OLLAMA_URL[/bold yellow] in your environment.",
-            title="Connection Failed", border_style="red"
-        ))
-        sys.exit(1)
+        if not try_start_ollama():
+            sys.exit(1)
 
     if not client.is_model_available():
         console.print(Panel(
