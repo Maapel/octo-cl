@@ -10,6 +10,7 @@ from octo_cl.context_builder import ContextBuilder
 from octo_cl.tools import ToolRegistry
 import os
 import re
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -62,6 +63,26 @@ def chat(
     Start an interactive chat session with octo-cl.
     """
     client = OllamaClient(base_url=OLLAMA_URL, model=model)
+    
+    # --- Pre-flight Checks ---
+    if not client.check_connection():
+        console.print(Panel(
+            f"[bold red]Error:[/bold red] Could not connect to Ollama at [bold cyan]{OLLAMA_URL}[/bold cyan].\n\n"
+            "Please ensure Ollama is running and accessible.\n"
+            "If it's on a different machine, set [bold yellow]OLLAMA_URL[/bold yellow] in your environment.",
+            title="Connection Failed", border_style="red"
+        ))
+        sys.exit(1)
+
+    if not client.is_model_available():
+        console.print(Panel(
+            f"[bold red]Error:[/bold red] Model [bold cyan]{model}[/bold cyan] not found in Ollama.\n\n"
+            f"Run [bold green]ollama pull {model}[/bold green] to download it first.",
+            title="Model Missing", border_style="red"
+        ))
+        sys.exit(1)
+    # -------------------------
+
     cb = ContextBuilder()
     tools = ToolRegistry()
     
@@ -122,7 +143,6 @@ def process_ai_response(client, messages, tools):
                 console.print(Panel(f"[bold red]Security Check:[/bold red] Agent wants to call [bold cyan]{name}[/bold cyan]\nArgs: {params}", expand=False))
                 confirm = typer.confirm("Allow this action?")
                 if not confirm:
-                    observation = "User denied the execution of this tool."
                     messages.append({"role": "user", "content": f"Tool '{name}' execution was denied by the user."})
                     continue
 
@@ -130,7 +150,6 @@ def process_ai_response(client, messages, tools):
             console.print(f"[bold magenta]Tool Result ({name}):[/bold magenta] {observation[:100]}...")
             messages.append({"role": "user", "content": f"Tool Result ({name}):\n{observation}"})
         
-        # After tool execution, the loop continues to let the AI process the observation
         console.print("[dim italic]Agent is thinking based on tool results...[/dim italic]")
 
 if __name__ == "__main__":
