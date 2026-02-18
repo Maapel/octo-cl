@@ -31,8 +31,6 @@ class OllamaClient:
                         if chunk.get("done"):
                             break
         except httpx.ConnectError:
-            yield f"
-[bold red]Error:[/bold red] Could not connect to Ollama at {self.base_url}. Is it running?"
+            yield f"\n[bold red]Error:[/bold red] Could not connect to Ollama at {self.base_url}. Is it running?"
         except Exception as e:
-            yield f"
-[bold red]Error:[/bold red] {str(e)}"
+            yield f"\n[bold red]Error:[/bold red] {str(e)}"
