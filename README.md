@@ -11,7 +11,7 @@
 
 To provide a powerful, extensible, and open-source AI coding experience that runs entirely on your local machine. `octo-cl` aims to be the go-to tool for developers who want the power of agentic coding without relying on cloud-based services.
 
-## 的核心功能 (Core Features)
+## 🚀 Core Features
 
 *   **Chat with your Code:** Start an interactive session to discuss your codebase.
 *   **Context-Aware:** Automatically reads your directory structure, respects `.gitignore`, and intelligently includes relevant file context in prompts.
