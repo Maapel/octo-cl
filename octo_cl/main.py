@@ -5,6 +5,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from octo_cl.llm_interface import OllamaClient
+from octo_cl.context_builder import ContextBuilder
 import os
 from dotenv import load_dotenv
 
@@ -13,7 +14,7 @@ load_dotenv()
 app = typer.Typer()
 console = Console()
 
-# Configuration (could be moved to a config module later)
+# Configuration
 DEFAULT_MODEL = os.getenv("OCTO_MODEL", "qwen2.5-coder:7b")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
@@ -25,17 +26,37 @@ def chat(
     Start an interactive chat session with octo-cl.
     """
     client = OllamaClient(base_url=OLLAMA_URL, model=model)
-    messages = []
+    cb = ContextBuilder()
     
-    console.print(f"[bold blue]octo-cl[/bold blue] (model: {model}) is ready. Type 'exit' or 'quit' to end.")
+    # Initialize messages with a system prompt containing project context
+    system_prompt = cb.build_system_prompt()
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    console.print(f"[bold blue]octo-cl[/bold blue] (model: {model}) is ready. Type 'exit' or '/help' for options.")
     
     while True:
         try:
             user_input = console.input("[bold green]>>> [/bold green]")
             
+            if not user_input.strip():
+                continue
+
             if user_input.lower() in ["exit", "quit"]:
                 break
                 
+            if user_input.startswith("/add "):
+                file_path = user_input.split(" ", 1)[1]
+                content = cb.get_file_content(file_path)
+                messages.append({"role": "user", "content": f"Here is the content of {file_path}:\n{content}"})
+                console.print(f"[bold yellow]Added {file_path} to context.[/bold yellow]")
+                continue
+
+            if user_input == "/help":
+                console.print("[bold cyan]Commands:[/bold cyan]")
+                console.print("  /add <file> - Add file content to context")
+                console.print("  exit, quit  - End session")
+                continue
+
             messages.append({"role": "user", "content": user_input})
             
             full_response = ""
