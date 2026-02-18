@@ -57,10 +57,7 @@ class ToolRegistry:
                 cwd=self.root_dir
             )
             output = result.stdout + result.stderr
-            return f"Command: {command}
-Exit Code: {result.returncode}
-Output:
-{output}"
+            return f"Command: {command}\nExit Code: {result.returncode}\nOutput:\n{output}"
         except Exception as e:
             return f"Error running command '{command}': {str(e)}"
 
@@ -69,7 +66,6 @@ Output:
             return f"Error: Access denied to {path}"
         try:
             files = os.listdir(self.root_dir / path)
-            return "
-".join(files)
+            return "\n".join(files)
         except Exception as e:
             return f"Error listing {path}: {str(e)}"
